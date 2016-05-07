@@ -1,6 +1,6 @@
 {
-  "name": "meanjs",
-  "description": "Fullstack JavaScript with MongoDB, Express, AngularJS, and Node.js.",
+  "name": "mymoments",
+  "description": "Custom moments based on your Twitter preferences and interests",
   "homepage": "http://meanjs.org/",
   "license": "MIT",
   "dependencies": {
