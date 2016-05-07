@@ -40,8 +40,8 @@ module.exports = {
     callbackURL: '/api/auth/facebook/callback'
   },
   twitter: {
-    clientID: process.env.TWITTER_KEY || 'CONSUMER_KEY',
-    clientSecret: process.env.TWITTER_SECRET || 'CONSUMER_SECRET',
+    clientID: process.env.TWITTER_KEY || '1eKxZupL5OxEMpY4L0fv7gixo',
+    clientSecret: process.env.TWITTER_SECRET || 'GDDKbtLp2dU6oFxnVPLImdEysQsjAm5X84RuAMlFFES3H8WYj6',
     callbackURL: '/api/auth/twitter/callback'
   },
   google: {

@@ -111,12 +111,13 @@ exports.oauthCallback = function (strategy) {
       if (!user) {
         return res.redirect('/authentication/signin');
       }
+      console.log(user);
       req.login(user, function (err) {
         if (err) {
           return res.redirect('/authentication/signin');
         }
-
-        return res.redirect(redirectURL || sessionRedirectURL || '/');
+        // return res.redirect(redirectURL || sessionRedirectURL || '/');
+        return res.redirect('/');
       });
     })(req, res, next);
   };
