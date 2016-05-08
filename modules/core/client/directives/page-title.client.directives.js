@@ -4,7 +4,7 @@
   angular.module('core')
     .directive('pageTitle', pageTitle);
 
-  pageTitle.$inject = ['$rootScope', '$timeout', '$interpolate', '$state'];
+  pageTitle.$inject = ['$rootScope', '$timeout', '$interpolate', '$state', '$window'];
 
   function pageTitle($rootScope, $timeout, $interpolate, $state) {
     var directive = {
@@ -25,7 +25,7 @@
       }
 
       function getTitle(currentState) {
-        var applicationCoreTitle = 'MEAN.js';
+        var applicationCoreTitle = 'MyMoments';
         var workingState = currentState;
         if (currentState.data) {
           workingState = (typeof workingState.locals !== 'undefined') ? workingState.locals.globals : workingState;
