@@ -16,7 +16,7 @@
   <div> -->
     <!-- All user info (profile, tweets, keywords, news) --> 
     <div class="row">
-      <div class="col-sm-6 left-panel">
+      <div class="col-sm-5 left-panel">
         <div class="row">
           <div class="bs-callout bs-callout-primary">
             <h2> {{ vm.authentication.user.displayName }}  </h2>
@@ -33,7 +33,7 @@
           </div>
         </div>
       </div>
-      <div class="col-sm-6 right-panel">
+      <div class="col-sm-7 right-panel">
         <div class="row">
           <div class="bs-callout bs-callout-info">
             <h3> Interests </h3> 
@@ -45,10 +45,13 @@
         <div class="row">
           <div class="bs-callout bs-callout-info">
             <h3> Moments </h3>
-            <ul>
-              <li ng-repeat="moment in vm.moments"> 
+            <ul class="list-group">
+              <li  class="list-group-item" ng-repeat="moment in vm.moments"> 
                 <a href="{{ moment.guid }}">
-                  {{ moment.title }} 
+                  <div>
+                  <h5> {{ moment.title }} </h5>
+                  {{ moment.description }}
+                  </div>
                 </a>
               </li>
             </ul>

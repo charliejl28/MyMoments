@@ -137,11 +137,9 @@ var parser = function(tweet) {
   return res;
 }
 
-
-var getInterests = function(user, tweets) {
+var getTokenFrequencies = function(tweets){
   var words = {};
-  // step 1: generate a dictionary of most frequent terms
-  for (var j = 0; j < 1; j++) {
+  for (var j = 0; j < tweets.length; j++) {
     var tokens = parser(tweets[j].text);
     for (var i = 0; i < tokens.length; i++) {
       var w = tokens[i];
@@ -151,7 +149,143 @@ var getInterests = function(user, tweets) {
       }
     };
   }
+  return words;
+};
+
+var getDMOZForTerm = function(term, callback){
+  var url = 'https://www.dmoz.org/search?q=' + term + '&start=0&type=more&all=no&cat=';
+
+  // get the first page
+  request(url, function(error, response, html) {
+    if (!error) {
+      var $ = cheerio.load(html);
+
+      // check if there are any results
+      if ($('ol.dir').length) {
+
+        // store first page results
+        var result = [];
+
+        // get current and ending index
+        var h3 = $('h3').children().first().next().text().split(' ');
+        var end = parseInt(h3[2].substring(0, h3[2].length-1));
+
+        // get categories from first page
+        $('li').each(function(i, element){
+          var categories = $(this).children().first().children().text().split(':');
+          for (var k = 0; k < categories.length; k++) {
+            var cat = categories[k].trim();
+            result.push(cat);
+            // interests[cat] = size;
+          }
+        });
+        // callback(result, 25, end, x, len);
+        return callback(null, result);
+      }
+    }
+    callback(error, null);
+  })
+}; 
+
+var CNN_CATEGORIES = ['top', 'world', 'us', 'business', 'politics', 
+  'technology', 'health', 'entertainment', 'travel', 'living', 'video', 
+  'studentNews', 'latest', 'ireport'];
+var NUM_MOMENTS = 19.;
+
+var getInterestsFromTweets = function(user, tweets, interestsCallback) {
   
+  // step 1: generate a dictionary of most frequent tokens
+  var tokenFrequencies = getTokenFrequencies(tweets);
+
+  // step 2: retrieve DMOZ categories for each token
+  var words = Object.keys(tokenFrequencies);
+  var cnnFrequencies = {}
+  var finished = 0;
+  console.log(words.length, ' words');
+  async.each(words, function(word, eachCallback){
+    console.log('word: ', word);
+    getDMOZForTerm(word, function(error, categories){
+      // console.log(word, 'DMOZ categories: ', categories);
+      finished += 1;
+      console.log(finished, 'finished');
+
+      // step 3: count appearances of CNN categories in DMOZ categories
+      if (categories){
+        for (var i = 0; i < categories.length; i++) {
+          var category = categories[i].trim().toLowerCase();
+          if (CNN_CATEGORIES.indexOf(category) >= 0) {
+            console.log('* found ', category,'!');
+            if (category in cnnFrequencies) {
+              cnnFrequencies[category] += tokenFrequencies[word];
+            }
+            else {
+              cnnFrequencies[category] = tokenFrequencies[word];
+            }
+          };
+        };
+      }
+
+      eachCallback();
+    });
+  }, function(err){
+
+    // Create items array
+    var items = Object.keys(cnnFrequencies).map(function(key) {
+        return [key, cnnFrequencies[key]];
+    });
+
+    // Sort the array based on the second element
+    items.sort(function(first, second) {
+        return second[1] - first[1];
+    });
+
+    console.log('cnn counts: ', items);
+
+    var totalCount = 0;
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i];
+      totalCount += item[1];
+    }
+    console.log('total: ', totalCount)
+
+    var interests = []
+    var totalMoments = 0;
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i];
+      console.log(item[0], ': ', item[1]);
+      var numMomentsForCurrentTopic = Math.round(Math.max(NUM_MOMENTS*1.0*item[1]/totalCount, 1));
+      interests.push({
+        topic: item[0],
+        count: numMomentsForCurrentTopic
+      });
+      totalMoments += numMomentsForCurrentTopic
+      if (totalMoments >= NUM_MOMENTS) {  break;  };
+    }
+
+    console.log('interests: ', interests)
+    interestsCallback(null, interests);
+  });
+
+
+  var fakeInterests = [
+    {
+      topic: 'technology',
+      count: 4
+    },
+    {
+      topic: 'health',
+      count: 2
+    },
+    {
+      topic: 'top',
+      count: 2
+    }
+  ];
+
+  // interestsCallback(null, fakeInterests);
+
+  return;
+
   // step 2: for each term, scrape DMOZ to find the categories
   var big = [];
 
@@ -246,42 +380,11 @@ var getInterests = function(user, tweets) {
     }
     // callback(result);
   }
-  // return callback();
-
-  // step 3: once all categories have been found, format the result.
-  // while(!finished);
-  // retInterests(function(interests) {
-  // var result =  [];
-  // for (var y in interests) {
-  //   console.log(y);
-  //   result.push({
-  //     topic: category,
-  //     count: interests[category]
-  //   });
-  // }
-  // return result;
-// });
-
-  
-  // return [
-  //   {
-  //     topic: 'technology',
-  //     count: 4
-  //   },
-  //   {
-  //     topic: 'health',
-  //     count: 2
-  //   },
-  //   {
-  //     topic: 'top',
-  //     count: 2
-  //   }
-  // ];
-  // return result;
 };
 
 var getMomentsFromInterests = function(user, interests, callback) {
-  var moments = [];
+
+  var momentsByTopic = {}
 
   async.each(interests, function(interest, eachCallback){
     console.log('interest: ', interest);
@@ -294,10 +397,14 @@ var getMomentsFromInterests = function(user, interests, callback) {
       }
       else {
         var count = Math.min(interest.count, articles.length);
-
+        console.log('* adding ', count, interest.topic, ' articles');
+        var topicMoments = [];
         for (var i = 0; i < count; i++) {
-          moments.push(articles[i]);
+          var article = articles[i];
+          article.description = article.description.split('<')[0];
+          topicMoments.push(article);
         };
+        momentsByTopic[interest.topic] = topicMoments;
       }
       eachCallback();
     });
@@ -306,6 +413,21 @@ var getMomentsFromInterests = function(user, interests, callback) {
       console.log(err); 
     }
     else {
+      console.log(Object.keys(momentsByTopic));
+      // console.log('moments by topic: ', momentsByTopic);
+      var moments = [];
+      console.log('interests: ', interests.length);
+      for (var i = 0; i < interests.length; i++){
+        var interest = interests[i];
+        var momentsForTopic = momentsByTopic[interest.topic];
+        console.log('* ', momentsForTopic.length, interest.topic, ' articles');
+        for (var j = 0; j < momentsForTopic.length; j++) {
+          var moment = momentsForTopic[j];
+          console.log('** ', moment.title);
+          moments.push(moment);
+        }; 
+      }
+      // console.log('all moments: ', moments);
       callback(null, moments);
     }
   });
@@ -314,20 +436,13 @@ var getMomentsFromInterests = function(user, interests, callback) {
 
 var getMomentsForUser = function(user, callback){
   getTweets(user, function(error, tweets){
-    var interests = getInterests(user, tweets);
-    // getInterests(user, tweets, function(response) {
-    //   for (var key in response) {
-    //     interests.push({
-    //       topic: key,
-    //       count: response[key]
-    //     });
-    //   }
-    // });
-    getMomentsFromInterests(user, interests, function(error, moments){
-      callback({
-        tweets: tweets,
-        interests: interests,
-        moments: moments
+    getInterestsFromTweets(user, tweets, function(error, interests){
+      getMomentsFromInterests(user, interests, function(error, moments){
+        callback({
+          tweets: tweets,
+          interests: interests,
+          moments: moments
+        });
       });
     });
   });

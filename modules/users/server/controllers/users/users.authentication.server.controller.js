@@ -105,7 +105,9 @@ exports.oauthCallback = function (strategy) {
     delete req.session.redirect_to;
 
     passport.authenticate(strategy, function (err, user, redirectURL) {
+      
       if (err) {
+        console.log(err);
         return res.redirect('/authentication/signin?err=' + encodeURIComponent(errorHandler.getErrorMessage(err)));
       }
       if (!user) {
@@ -165,6 +167,7 @@ exports.saveOAuthUserProfile = function (req, providerUserProfile, done) {
               providerData: providerUserProfile.providerData
             });
 
+            console.log('about to save user: ', user);
             // And save the user
             user.save(function (err) {
               return done(err, user);
