@@ -37,11 +37,21 @@
         <div class="row">
           <div class="bs-callout bs-callout-info">
             <h3> Interests </h3> 
+            <ul>
+              <li ng-repeat="interest in vm.interests"> {{ interest.topic }} ({{ interest.count }})</li>
+            </ul>
           </div>
         </div>
         <div class="row">
           <div class="bs-callout bs-callout-info">
             <h3> Moments </h3>
+            <ul>
+              <li ng-repeat="moment in vm.moments"> 
+                <a href="{{ moment.guid }}">
+                  {{ moment.title }} 
+                </a>
+              </li>
+            </ul>
           </div>
         </div>
       </div>  
