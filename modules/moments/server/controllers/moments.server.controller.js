@@ -205,17 +205,7 @@ var getInterests = function(user, tweets) {
   //   console.log(p);
   // }
   return interests;
-  
 
-  // step 3: once all categories have been found, do something.
-  // return [
-  //   {
-  //     topic: 'tech'
-  //   },
-  //   {
-  //     topic: 'sports'
-  //   }
-  // ];
 };
 
 var getMomentsFromInterests = function(user, interests, callback) {
