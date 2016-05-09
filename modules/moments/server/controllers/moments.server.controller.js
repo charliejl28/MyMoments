@@ -166,20 +166,14 @@ var getDMOZForTerm = function(term, callback){
         // store first page results
         var result = [];
 
-        // get current and ending index
-        var h3 = $('h3').children().first().next().text().split(' ');
-        var end = parseInt(h3[2].substring(0, h3[2].length-1));
-
         // get categories from first page
         $('li').each(function(i, element){
           var categories = $(this).children().first().children().text().split(':');
           for (var k = 0; k < categories.length; k++) {
             var cat = categories[k].trim();
-            result.push(cat);
-            // interests[cat] = size;
+            if (cat.length != 1) result.push(cat);
           }
         });
-        // callback(result, 25, end, x, len);
         return callback(null, result);
       }
     }
@@ -285,101 +279,6 @@ var getInterestsFromTweets = function(user, tweets, interestsCallback) {
   // interestsCallback(null, fakeInterests);
 
   return;
-
-  // step 2: for each term, scrape DMOZ to find the categories
-  var big = [];
-
-  getResults(function(result, index, size, wIndex, wSize) {
-    big = big.concat(result);
-    if (index >= size) {
-      wIndex++;
-      if (wIndex == wSize) {
-        console.log(big);
-        return big;
-      }
-    }
-  });
-
-  function getEnd(url, callback) {
-    request(url, function(error, response, html) {
-      if (!error) {
-        var $ = cheerio.load(html);
-        if ($('ol.dir').length) {
-          var h3 = $('h3').children().first().next().text().split(' ');
-          var end = parseInt(h3[2].substring(0, h3[2].length-1));
-          callback(end);
-        }
-        else callback(0);
-      }
-    })
-  }
-
-  function getResults(callback) {
-    var x = -1;
-    var len = Object.keys(words).length;
-    for (var keyword in words) {
-      x++;
-      var size = words[keyword];
-      var url = 'https://www.dmoz.org/search?q=' + keyword + '&start=0&type=more&all=no&cat=';
-
-      // get the first page
-      request(url, function(error, response, html) {
-        if (!error) {
-          var $ = cheerio.load(html);
-
-          // check if there are any results
-          if ($('ol.dir').length) {
-
-            // store first page results
-            var result = [];
-
-            // get current and ending index
-            var h3 = $('h3').children().first().next().text().split(' ');
-            var end = parseInt(h3[2].substring(0, h3[2].length-1));
-
-            // get categories from first page
-            $('li').each(function(i, element){
-              var categories = $(this).children().first().children().text().split(':');
-              for (var k = 0; k < categories.length; k++) {
-                var cat = categories[k].trim();
-                result.push({topic: cat, count: size});
-                // interests[cat] = size;
-              }
-            });
-            callback(result, 25, end, x, len);
-          }
-        }
-      })
-
-      // get any subsequent pages
-      url = 'https://www.dmoz.org/search?q=' + keyword + '&start=25&type=more&all=no&cat=';
-      getEnd(url, function(endIndex) {
-        var index = 25;
-        while(index < endIndex) {
-          url = 'https://www.dmoz.org/search?q=' + keyword + '&start=' + index.toString() + '&type=more&all=no&cat=';
-          request(url, function(error, response, html) {
-            if (!error) {
-              var result = [];
-              $ = cheerio.load(html);
-              $('li').each(function(i, element){
-                var categories = $(this).children().first().children().text().split(' ');
-                for (var m = 0; m < categories.length; m++) {
-                  var cat = categories[m].trim();
-                  result.push({topic: cat, count: size});
-                  // console.log(cat);
-                  // interests[cat] = size;
-                }
-              });
-              index += 25;
-              callback(result, index, endIndex, x, len);
-            }
-          })
-        }
-      });
-
-    }
-    // callback(result);
-  }
 };
 
 var getMomentsFromInterests = function(user, interests, callback) {
