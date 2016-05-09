@@ -11,14 +11,11 @@ var path = require('path'),
   _ = require('lodash');
 
 var Twitter = require('twitter');
-<<<<<<< HEAD
 var express = require('express');
 var request = require('request');
 var cheerio = require('cheerio');
 var keyword_extractor = require("keyword-extractor");
-=======
 var cnn = require('cnn-news');
->>>>>>> 80df72f4127c04a389b75ea01a53e605a039c40e
 
 /**
  * Create a Moment
@@ -141,7 +138,6 @@ var parser = function(tweet) {
 }
 
 var getInterests = function(user, tweets) {
-<<<<<<< HEAD
   var words = {};
   // step 1: generate a dictionary of most frequent terms
   for (var j = 0; j < 1; j++) {
@@ -223,31 +219,6 @@ var getInterests = function(user, tweets) {
 };
 
 var getMomentsFromInterests = function(user, interests, callback) {
-  var moments = [      
-          {
-            title: 'first moment'
-          },
-          {
-            title: 'second moment'
-          }];
-=======
-  return [
-    {
-      topic: 'technology',
-      count: 4
-    },
-    {
-      topic: 'health',
-      count: 2
-    },
-    {
-      topic: 'top',
-      count: 2
-    }
-  ];
-};
-
-var getMomentsFromInterests = function(user, interests, callback) {
   var moments = [];
 
   async.each(interests, function(interest, eachCallback){
@@ -276,7 +247,6 @@ var getMomentsFromInterests = function(user, interests, callback) {
       callback(null, moments);
     }
   });
->>>>>>> 80df72f4127c04a389b75ea01a53e605a039c40e
 
   callback(null, moments);
 }
