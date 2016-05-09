@@ -5,16 +5,13 @@
     .module('core')
     .controller('HomeController', HomeController);
 
-  HomeController.$inject = ['$scope', '$state', 'Authentication', 'menuService'];
+  HomeController.$inject = ['$scope', '$state', 'Authentication', 'menuService', 'MomentsService', '$http'];
 
-  function HomeController($scope, $state, Authentication, menuService) {
+  function HomeController($scope, $state, Authentication, menuService, Moments, $http) {
     var vm = this;
 
     vm.authentication = Authentication;
     vm.init = init;
-    vm.tweets = [];
-    vm.interests = [];
-    vm.moments = [];
 
     init();
 
@@ -25,7 +22,14 @@
     }
 
     function getMoments() {
-
+    	$http.get('/api/moments').success(function (response) {
+        // If successful we assign the response to the global user model
+	        vm.tweets = response.tweets;
+	        vm.interests = response.interests;
+	        vm.moments = response.moments;
+	      }).error(function (response) {
+	        vm.error = response.message;
+      });
     }
   }
 }());
