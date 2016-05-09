@@ -11,11 +11,11 @@ var path = require('path'),
   _ = require('lodash');
 
 var Twitter = require('twitter');
+var cnn = require('cnn-news');
 var express = require('express');
 var request = require('request');
 var cheerio = require('cheerio');
 var keyword_extractor = require("keyword-extractor");
-var cnn = require('cnn-news');
 
 /**
  * Create a Moment
@@ -97,11 +97,11 @@ var getTweets = function(user, callback) {
   console.log(twitterData);
 
   var client = new Twitter(twitterData);
-   
+
   var params = {screen_name: user.providerData.screen_name};
   client.get('statuses/user_timeline', params, function(error, tweets, response){
     if (!error) {
-      console.log(tweets);
+      // console.log(tweets);
       for (var i = 0; i < tweets.length; i++) {
         var tweet = tweets[i];
         tweet.user = tweet.user.screen_name;
@@ -127,21 +127,22 @@ var parser = function(tweet) {
                                               remove_duplicates: false
                                              });
   for (var i = 0; i < res.length; i++) {
-    if (res[i] == 'RT' || res[i].indexOf('@') == 0 || url(res[i]))
+    if (res[i] == 'RT' || res[i].indexOf('@') == 0 || url(res[i]) || res[i].length == 1)
       res[i] = '';
     else {
       if (res[i].indexOf('#') == 0) res[i] = res[i].substring(1);
-      res[i].replace(/[^a-zA-Z ]/g, "");
+      res[i].replace(/[^a-zA-Z ]/g, '');
     }
   };
   return res;
 }
 
+
 var getInterests = function(user, tweets) {
   var words = {};
   // step 1: generate a dictionary of most frequent terms
   for (var j = 0; j < 1; j++) {
-    var tokens = parser(tweets[j]["text"]);
+    var tokens = parser(tweets[j].text);
     for (var i = 0; i < tokens.length; i++) {
       var w = tokens[i];
       if (w != '') {
@@ -152,60 +153,131 @@ var getInterests = function(user, tweets) {
   }
   
   // step 2: for each term, scrape DMOZ to find the categories
-  var interests = {};
-  var keyword;
-  for (keyword in words) {
-    var count = words[keyword];
-    var url = 'https://www.dmoz.org/search?q=' + keyword + '&start=0&type=more&all=no&cat=';
+  var big = [];
+
+  getResults(function(result, index, size, wIndex, wSize) {
+    big = big.concat(result);
+    if (index >= size) {
+      wIndex++;
+      if (wIndex == wSize) {
+        console.log(big);
+        return big;
+      }
+    }
+  });
+
+  function getEnd(url, callback) {
     request(url, function(error, response, html) {
       if (!error) {
         var $ = cheerio.load(html);
-
-        // check if there are any results
         if ($('ol.dir').length) {
-          $('li').each(function(i, element){
-            var categories = $(this).children().first().children().text().split(":");
-            for (var k = 0; k < categories.length; k++) {
-              var cat = categories[k].trim();
-              // console.log(cat);
-              interests[cat] = count;
-            }
-          });
-
-          // if there are more than 25, keep crawling until finished
-          var index = 25;
-          var h3 = $('h3').children().first().next().text().split(" ");
+          var h3 = $('h3').children().first().next().text().split(' ');
           var end = parseInt(h3[2].substring(0, h3[2].length-1));
-
-          while (index < end) {
-            url = 'https://www.dmoz.org/search?q=' + keyword + '&start=' + index.toString() + '&type=more&all=no&cat=';
-            request(url, function(error2, response2, html2) {
-              if (!error2) {
-                $ = cheerio.load(html2);
-                $('li').each(function(j, element2){
-                  var categories = $(this).children().first().children().text().split(":");
-                  for (var m = 0; m < categories.length; m++) {
-                    var cat = categories[m].trim();
-                    // console.log(cat);
-                    interests[cat] = count;
-                  }
-                });
-              }
-            })
-            index += 25;
-          }
+          callback(end);
         }
+        else callback(0);
       }
     })
   }
 
-  // var p;
-  // console.log('===================');
-  // for (p in words) {
-  //   console.log(p);
-  // }
-  return interests;
+  function getResults(callback) {
+    var x = -1;
+    var len = Object.keys(words).length;
+    for (var keyword in words) {
+      x++;
+      var size = words[keyword];
+      var url = 'https://www.dmoz.org/search?q=' + keyword + '&start=0&type=more&all=no&cat=';
 
+      // get the first page
+      request(url, function(error, response, html) {
+        if (!error) {
+          var $ = cheerio.load(html);
+
+          // check if there are any results
+          if ($('ol.dir').length) {
+
+            // store first page results
+            var result = [];
+
+            // get current and ending index
+            var h3 = $('h3').children().first().next().text().split(' ');
+            var end = parseInt(h3[2].substring(0, h3[2].length-1));
+
+            // get categories from first page
+            $('li').each(function(i, element){
+              var categories = $(this).children().first().children().text().split(':');
+              for (var k = 0; k < categories.length; k++) {
+                var cat = categories[k].trim();
+                result.push({topic: cat, count: size});
+                // interests[cat] = size;
+              }
+            });
+            callback(result, 25, end, x, len);
+          }
+        }
+      })
+
+      // get any subsequent pages
+      url = 'https://www.dmoz.org/search?q=' + keyword + '&start=25&type=more&all=no&cat=';
+      getEnd(url, function(endIndex) {
+        var index = 25;
+        while(index < endIndex) {
+          url = 'https://www.dmoz.org/search?q=' + keyword + '&start=' + index.toString() + '&type=more&all=no&cat=';
+          request(url, function(error, response, html) {
+            if (!error) {
+              var result = [];
+              $ = cheerio.load(html);
+              $('li').each(function(i, element){
+                var categories = $(this).children().first().children().text().split(' ');
+                for (var m = 0; m < categories.length; m++) {
+                  var cat = categories[m].trim();
+                  result.push({topic: cat, count: size});
+                  // console.log(cat);
+                  // interests[cat] = size;
+                }
+              });
+              index += 25;
+              callback(result, index, endIndex, x, len);
+            }
+          })
+        }
+      });
+
+    }
+    // callback(result);
+  }
+  // return callback();
+
+  // step 3: once all categories have been found, format the result.
+  // while(!finished);
+  // retInterests(function(interests) {
+  // var result =  [];
+  // for (var y in interests) {
+  //   console.log(y);
+  //   result.push({
+  //     topic: category,
+  //     count: interests[category]
+  //   });
+  // }
+  // return result;
+// });
+
+  
+  // return [
+  //   {
+  //     topic: 'technology',
+  //     count: 4
+  //   },
+  //   {
+  //     topic: 'health',
+  //     count: 2
+  //   },
+  //   {
+  //     topic: 'top',
+  //     count: 2
+  //   }
+  // ];
+  // return result;
 };
 
 var getMomentsFromInterests = function(user, interests, callback) {
@@ -238,12 +310,19 @@ var getMomentsFromInterests = function(user, interests, callback) {
     }
   });
 
-  callback(null, moments);
 }
 
 var getMomentsForUser = function(user, callback){
   getTweets(user, function(error, tweets){
     var interests = getInterests(user, tweets);
+    // getInterests(user, tweets, function(response) {
+    //   for (var key in response) {
+    //     interests.push({
+    //       topic: key,
+    //       count: response[key]
+    //     });
+    //   }
+    // });
     getMomentsFromInterests(user, interests, function(error, moments){
       callback({
         tweets: tweets,
